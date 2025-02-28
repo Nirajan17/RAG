@@ -82,10 +82,3 @@ def ask_question(pdf_path, question):
         except Exception as e:
             return f"Error answering question: {str(e)}"
     return "I don't know"
-
-# Example of how to use it (you would replace the path with the uploaded file's path)
-# if __name__ == "__main__":
-#     pdf_path = "./user_uploaded_file.pdf"  # This would be dynamically set based on upload
-#     question = "What is the main topic of the document?"
-#     answer = ask_question(pdf_path, question)
-#     print(answer)
