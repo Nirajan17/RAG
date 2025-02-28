@@ -1,3 +1,4 @@
 .env
 simpleRAG.ipynb
 *.pdf
+__pycache__/
