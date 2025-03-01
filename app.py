@@ -18,7 +18,6 @@ memory = ConversationBufferMemory(
     return_messages=True        
 )
 
-
 template = """
 You are an AI assistant to the user. Provide response based on the context and the chat history.
 
