@@ -1,74 +1,56 @@
-# app.py
 import streamlit as st
 import os
-from app import ask_question
-from datetime import datetime
+from app import ask_question  
 
-# Streamlit app configuration
-st.set_page_config(page_title="PDF Q&A", page_icon="📄")
+# Streamlit app
+def main():
+    st.title("PDF Chatbot with Memory")
+    st.write("Upload a PDF and ask questions about its content. The chatbot remembers the conversation!")
 
-# Title
-st.title("PDF Question Answering")
-st.write("Upload a PDF and ask questions. Scroll to see previous responses.")
+    # Sidebar for PDF upload
+    with st.sidebar:
+        st.header("Upload PDF")
+        uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
+        
+        if uploaded_file is not None:
+            # Save uploaded file temporarily
+            pdf_path = f"temp_{uploaded_file.name}"
+            with open(pdf_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            st.success("PDF uploaded successfully!")
+        else:
+            pdf_path = None
 
-# File uploader
-uploaded_file = st.file_uploader("Upload a PDF file", type="pdf")
+    # Initialize chat history in session state
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-# Initialize session state for history and file path
-if "qa_history" not in st.session_state:
-    st.session_state.qa_history = []
-if "temp_pdf_path" not in st.session_state:
-    st.session_state.temp_pdf_path = None
+    # Display chat history
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-# Handle file upload
-if uploaded_file is not None:
-    # Clean up previous file if it exists
-    if st.session_state.temp_pdf_path and os.path.exists(st.session_state.temp_pdf_path):
-        os.remove(st.session_state.temp_pdf_path)
-    
-    # Save new file temporarily
-    temp_pdf_path = f"temp_{uploaded_file.name}"
-    with open(temp_pdf_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    st.session_state.temp_pdf_path = temp_pdf_path
-    st.success(f"Uploaded: {uploaded_file.name}")
+    # Input for new question
+    if pdf_path:
+        question = st.chat_input("Ask a question about the PDF...")
+        if question:
+            # Display user question
+            with st.chat_message("user"):
+                st.markdown(question)
+            st.session_state.messages.append({"role": "user", "content": question})
 
-    # Question input and submission
-    question = st.text_input("Ask a question:")
-    if st.button("Submit") and question:
-        with st.spinner("Processing..."):
-            answer = ask_question(temp_pdf_path, question)
-            st.session_state.qa_history.append({
-                "question": question,
-                "answer": answer,
-                "timestamp": datetime.now()
-            })
+            # Get and display assistant response
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    answer = ask_question(pdf_path, question)
+                    st.markdown(answer)
+                st.session_state.messages.append({"role": "assistant", "content": answer})
+    else:
+        st.warning("Please upload a PDF to start chatting.")
 
-# Display scrollable history
-if st.session_state.qa_history:
-    st.markdown("---")
-    st.subheader("Previous Questions & Answers")
-    for idx, entry in enumerate(st.session_state.qa_history):
-        st.write(f"**Q{idx + 1} ({entry['timestamp'].strftime('%H:%M:%S')}):** {entry['question']}")
-        st.write(f"**Answer:** {entry['answer']}")
-        st.markdown("---")
+    # Clean up temporary file if it exists
+    if pdf_path and os.path.exists(pdf_path):
+        os.remove(pdf_path)
 
-# Clear button
-if st.button("Clear All"):
-    if st.session_state.temp_pdf_path and os.path.exists(st.session_state.temp_pdf_path):
-        os.remove(st.session_state.temp_pdf_path)
-    st.session_state.qa_history = []
-    st.session_state.temp_pdf_path = None
-    st.success("Cleared all data.")
-
-# Footer
-st.markdown("---")
-st.write("Powered by LangChain & Ollama")
-
-# Automatic cleanup on app close
-def cleanup():
-    if st.session_state.temp_pdf_path and os.path.exists(st.session_state.temp_pdf_path):
-        os.remove(st.session_state.temp_pdf_path)
-
-import atexit
-atexit.register(cleanup)
+if __name__ == "__main__":
+    main()

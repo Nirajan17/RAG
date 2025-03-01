@@ -4,23 +4,31 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_community.vectorstores import DocArrayInMemorySearch
+from langchain.memory import ConversationBufferMemory
 from operator import itemgetter
 
-# Model configuration
+
 MODEL = "llama3.2"
 model = Ollama(model=MODEL)
 embeddings = OllamaEmbeddings(model=MODEL)
 
-# Define the prompt template
+
+memory = ConversationBufferMemory(
+    memory_key="chat_history",  
+    return_messages=True        
+)
+
+
 template = """
-Answer the questions based on the context below. If you cannot answer the question given, just reply I don't know
+You are an AI assistant to the user. Provide response based on the context and the chat history.
 
 Context: {context}
+Chat History: {chat_history}
 Question: {question}
+
 """
 prompt = PromptTemplate.from_template(template)
 
-# Parser for output
 parser = StrOutputParser()
 
 def process_pdf_and_create_chain(pdf_path):
@@ -34,21 +42,19 @@ def process_pdf_and_create_chain(pdf_path):
         Chain object for question answering
     """
     try:
-        # Load and split the PDF
         loader = PyPDFLoader(pdf_path)
         pages = loader.load_and_split()
         
-        # Create vector store from the PDF pages
         vectorstore = DocArrayInMemorySearch.from_documents(
             pages, 
             embeddings
         )
         retriever = vectorstore.as_retriever()
         
-        # Create the question-answering chain
         chain = (
             {
                 "context": itemgetter("question") | retriever,
+                "chat_history": lambda x: memory.load_memory_variables({})["chat_history"],
                 "question": itemgetter("question")
             }
             | prompt
@@ -62,10 +68,9 @@ def process_pdf_and_create_chain(pdf_path):
         print(f"Error processing PDF: {str(e)}")
         return None
 
-# Example usage function
 def ask_question(pdf_path, question):
     """
-    Ask a question based on the content of the uploaded PDF.
+    Ask a question based on the content of the uploaded PDF and maintain chat history.
     
     Args:
         pdf_path (str): Path to the PDF file
@@ -78,7 +83,10 @@ def ask_question(pdf_path, question):
     if chain:
         try:
             answer = chain.invoke({"question": question})
+            
+            memory.save_context({"question": question}, {"answer": answer})
+            
             return answer
         except Exception as e:
             return f"Error answering question: {str(e)}"
-    return "I don't know"
+    return "I couldn't answer that question"
