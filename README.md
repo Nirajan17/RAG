@@ -14,3 +14,10 @@ A **Retrieval-Augmented Generation (RAG)** chatbot built with *LangChain* and **
 - Python **3.8+**
 - *Ollama* with **LLaMA 3.2**
 - Dependencies listed in `requirements.txt`
+
+## Usage
+To start the chatbot, run this command in your terminal:
+
+```bash
+streamlit run app.py
+
